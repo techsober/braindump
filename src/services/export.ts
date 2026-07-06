@@ -52,9 +52,12 @@ function toMarkdown(items: Item[], folders: Folder[]): string {
     if (inFolder.length === 0) continue
     lines.push(`### 📁 ${folder ? folder.name : 'No folder'}`, '')
     for (const note of inFolder) {
-      lines.push(`#### ${displayTitle(note)}`)
+      const title = displayTitle(note)
+      const body = note.body ?? note.rawText
+      lines.push(`#### ${title}`)
       if (note.tags.length > 0) lines.push(note.tags.map((t) => `#${t}`).join(' '))
-      lines.push('', note.body ?? note.rawText, '')
+      if (body.trim() !== title) lines.push('', body)
+      lines.push('')
     }
   }
 
