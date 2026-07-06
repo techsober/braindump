@@ -3,6 +3,8 @@ import { repository } from '../db/dexieRepository'
 import type { NewCapture } from '../db/repository'
 import type { Item, Folder } from '../types'
 import { DEFAULT_FOLDERS } from '../types'
+import { classifier } from '../services/classify'
+import { allTags } from '../utils/items'
 
 interface Store {
   items: Item[]
@@ -55,9 +57,9 @@ export const useStore = create<Store>((set, get) => ({
     const item = await repository.createItem(c)
     set((s) => ({ items: [item, ...s.items] }))
 
-    // 2. Anything else (AI classification) happens detached, after the
-    //    fact, on top of an already-saved item.
-    afterCapture(item, c.type != null)
+    // 2. AI classification happens detached, after the fact, on top of
+    //    an already-saved item. Note: not awaited by the capture path.
+    void afterCapture(item, c.type != null, set, get)
 
     return item
   },
@@ -109,11 +111,52 @@ async function refreshItems(set: (p: Partial<Store>) => void) {
   set({ items: await repository.getAllItems() })
 }
 
+type SetState = {
+  (partial: Partial<Store>): void
+  (fn: (s: Store) => Partial<Store>): void
+}
+
 /**
  * Post-capture enhancement hook. The capture is already persisted when
  * this runs; nothing here may throw into, block, or gate the capture
- * path. AI classification attaches here in a later build stage.
+ * path. Offline, no API key, a dead API, or malformed output all end
+ * the same way: the item simply waits in the Inbox untriaged.
  */
-function afterCapture(_item: Item, _userSetType: boolean): void {
-  // no-op until the classification service is wired in (build stage 7)
+async function afterCapture(
+  item: Item,
+  userSetType: boolean,
+  set: SetState,
+  get: () => Store,
+): Promise<void> {
+  if (!classifier.available()) return
+
+  set((s) => ({ classifying: new Set(s.classifying).add(item.id) }))
+  try {
+    const suggestion = await classifier.classify(item.rawText, allTags(get().items))
+
+    // Re-check the live item: if the user already triaged, edited, or
+    // deleted it while the API call was in flight, the human wins.
+    const live = await repository.getItem(item.id)
+    if (!live || live.triaged || live.updatedAt !== item.updatedAt) return
+
+    const type = userSetType ? live.type : suggestion.type
+    await repository.updateItem(item.id, {
+      type,
+      title: suggestion.title,
+      body: type === 'note' ? (suggestion.body ?? live.rawText) : suggestion.body,
+      tags: suggestion.tags,
+      priority: type === 'task' ? suggestion.priority : null,
+      dueDate: type === 'task' ? suggestion.dueDate : null,
+      aiClassified: true,
+    })
+  } catch {
+    // Swallowed by design: AI is an enhancement, never a gate.
+  } finally {
+    set((s) => {
+      const classifying = new Set(s.classifying)
+      classifying.delete(item.id)
+      return { classifying }
+    })
+    await refreshItems(set)
+  }
 }

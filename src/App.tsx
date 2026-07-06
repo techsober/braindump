@@ -4,6 +4,7 @@ import CaptureScreen from './screens/CaptureScreen'
 import TasksScreen from './screens/TasksScreen'
 import NotesScreen from './screens/NotesScreen'
 import InboxScreen from './screens/InboxScreen'
+import SettingsSheet from './components/SettingsSheet'
 
 type Tab = 'capture' | 'inbox' | 'tasks' | 'notes'
 
@@ -19,6 +20,7 @@ export default function App() {
   const loaded = useStore((s) => s.loaded)
   const inboxCount = useStore((s) => s.items.filter((i) => !i.triaged).length)
   const [tab, setTab] = useState<Tab>('capture')
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   useEffect(() => {
     void load()
@@ -31,6 +33,9 @@ export default function App() {
       <header className="topbar">
         <span className="brand">Brain Dump</span>
         <span className="spacer" />
+        <button className="iconbtn" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
+          ⚙
+        </button>
       </header>
 
       <main className="screen">
@@ -53,6 +58,8 @@ export default function App() {
           </button>
         ))}
       </nav>
+
+      {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
     </div>
   )
 }
