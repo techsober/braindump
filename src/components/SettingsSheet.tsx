@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { getSetting, setSetting } from '../services/settings'
+import { exportJson, exportMarkdown } from '../services/export'
 
 interface Props {
   onClose(): void
@@ -19,6 +20,22 @@ export default function SettingsSheet({ onClose }: Props) {
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="grab" />
+
+        <div className="field">
+          <label>Export / backup</label>
+          <div className="chip-row" style={{ margin: 0 }}>
+            <button className="btn" onClick={() => void exportMarkdown()}>
+              ⬇ Markdown
+            </button>
+            <button className="btn" onClick={() => void exportJson()}>
+              ⬇ JSON
+            </button>
+          </div>
+          <p className="capture-hint" style={{ textAlign: 'left', marginTop: 6 }}>
+            Everything lives only on this device — clearing browser data wipes it. Export
+            regularly: Markdown to read, JSON to restore.
+          </p>
+        </div>
 
         <div className="field">
           <label>Anthropic API key — AI sorting</label>
