@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useStore } from './store/useStore'
 import CaptureScreen from './screens/CaptureScreen'
+import TasksScreen from './screens/TasksScreen'
+import NotesScreen from './screens/NotesScreen'
 
 type Tab = 'capture' | 'inbox' | 'tasks' | 'notes'
 
@@ -31,7 +33,9 @@ export default function App() {
 
       <main className="screen">
         {tab === 'capture' && <CaptureScreen />}
-        {tab !== 'capture' && (
+        {tab === 'tasks' && <TasksScreen />}
+        {tab === 'notes' && <NotesScreen />}
+        {tab === 'inbox' && (
           <div className="empty">
             <span className="empty-icon">🚧</span>
             Coming up in a later build stage.
