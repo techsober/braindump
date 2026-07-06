@@ -3,6 +3,7 @@ import { useStore } from './store/useStore'
 import CaptureScreen from './screens/CaptureScreen'
 import TasksScreen from './screens/TasksScreen'
 import NotesScreen from './screens/NotesScreen'
+import InboxScreen from './screens/InboxScreen'
 
 type Tab = 'capture' | 'inbox' | 'tasks' | 'notes'
 
@@ -16,6 +17,7 @@ const TABS: { id: Tab; icon: string; label: string }[] = [
 export default function App() {
   const load = useStore((s) => s.load)
   const loaded = useStore((s) => s.loaded)
+  const inboxCount = useStore((s) => s.items.filter((i) => !i.triaged).length)
   const [tab, setTab] = useState<Tab>('capture')
 
   useEffect(() => {
@@ -35,12 +37,7 @@ export default function App() {
         {tab === 'capture' && <CaptureScreen />}
         {tab === 'tasks' && <TasksScreen />}
         {tab === 'notes' && <NotesScreen />}
-        {tab === 'inbox' && (
-          <div className="empty">
-            <span className="empty-icon">🚧</span>
-            Coming up in a later build stage.
-          </div>
-        )}
+        {tab === 'inbox' && <InboxScreen />}
       </main>
 
       <nav className="tabbar">
@@ -52,6 +49,7 @@ export default function App() {
           >
             <span className="tab-icon">{t.icon}</span>
             {t.label}
+            {t.id === 'inbox' && inboxCount > 0 && <span className="badge">{inboxCount}</span>}
           </button>
         ))}
       </nav>
