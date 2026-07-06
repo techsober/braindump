@@ -46,6 +46,7 @@ export default function CaptureScreen() {
     })
     setText('')
     setTypeChoice('auto')
+    voiceUsed.current = false // next dump starts fresh as typed
     inputRef.current?.focus() // keep the keyboard up for the next dump
     showToast('Dumped ✓')
   }
