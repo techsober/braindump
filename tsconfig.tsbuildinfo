@@ -1,1 +1,1 @@
-{"root":["./src/App.tsx","./src/identity.ts","./src/main.tsx","./src/types.ts","./src/vite-env.d.ts","./src/db/db.ts","./src/db/dexieRepository.ts","./src/db/repository.ts","./src/screens/CaptureScreen.tsx","./src/store/useStore.ts"],"version":"5.9.3"}
+{"root":["./src/App.tsx","./src/identity.ts","./src/main.tsx","./src/types.ts","./src/vite-env.d.ts","./src/db/db.ts","./src/db/dexieRepository.ts","./src/db/repository.ts","./src/screens/CaptureScreen.tsx","./src/services/settings.ts","./src/services/transcribe.ts","./src/store/useStore.ts"],"version":"5.9.3"}

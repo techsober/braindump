@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store/useStore'
+import { getTranscriptionService, type TranscriptionSession } from '../services/transcribe'
 import type { ItemType } from '../types'
 
 type TypeChoice = 'auto' | ItemType
@@ -15,36 +16,95 @@ export default function CaptureScreen() {
   const [text, setText] = useState('')
   const [typeChoice, setTypeChoice] = useState<TypeChoice>('auto')
   const [toast, setToast] = useState<string | null>(null)
+  const [recording, setRecording] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const session = useRef<TranscriptionSession | null>(null)
+  // text that was in the box when the mic started; transcript appends to it
+  const preVoiceText = useRef('')
 
   // Zero taps to start typing: focus the box the moment the screen mounts.
   useEffect(() => {
     inputRef.current?.focus()
+    return () => session.current?.stop()
   }, [])
 
-  async function submit() {
+  function showToast(msg: string, ms = 1400) {
+    clearTimeout(toastTimer.current)
+    setToast(msg)
+    toastTimer.current = setTimeout(() => setToast(null), ms)
+  }
+
+  async function submit(source: 'text' | 'voice' = 'text') {
+    session.current?.stop()
     const rawText = text.trim()
     if (!rawText) return
     await capture({
       rawText,
-      source: 'text',
+      source,
       type: typeChoice === 'auto' ? undefined : typeChoice,
     })
     setText('')
     setTypeChoice('auto')
     inputRef.current?.focus() // keep the keyboard up for the next dump
-    clearTimeout(toastTimer.current)
-    setToast('Dumped ✓')
-    toastTimer.current = setTimeout(() => setToast(null), 1400)
+    showToast('Dumped ✓')
+  }
+
+  const voiceUsed = useRef(false)
+
+  async function toggleMic() {
+    if (recording) {
+      session.current?.stop()
+      return
+    }
+    const service = getTranscriptionService()
+    if (!service.available()) {
+      showToast(service.unavailableReason(), 3200)
+      return
+    }
+    voiceUsed.current = true
+    preVoiceText.current = text ? text.replace(/\s*$/, ' ') : ''
+    try {
+      setRecording(true)
+      session.current = await service.start({
+        onText(t) {
+          // Every partial lands in the box immediately: if recognition is
+          // cut off or errors, whatever text exists is already the capture.
+          setText(preVoiceText.current + t)
+        },
+        onEnd() {
+          setRecording(false)
+          session.current = null
+          inputRef.current?.focus()
+        },
+        onError(message) {
+          showToast(message, 3200)
+        },
+      })
+    } catch (err) {
+      // e.g. mic permission denied
+      setRecording(false)
+      session.current = null
+      showToast(
+        err instanceof Error && err.name === 'NotAllowedError'
+          ? 'Microphone access was denied.'
+          : 'Could not start voice capture.',
+        3200,
+      )
+    }
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
     // Desktop nicety: Enter dumps, Shift+Enter makes a newline.
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      void submit()
+      void submit(voiceUsed.current ? 'voice' : 'text')
     }
+  }
+
+  function onManualEdit(value: string) {
+    setText(value)
+    if (!value) voiceUsed.current = false
   }
 
   return (
@@ -53,9 +113,9 @@ export default function CaptureScreen() {
         <textarea
           ref={inputRef}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => onManualEdit(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="Dump anything — a task, an idea, a note…"
+          placeholder={recording ? 'Listening…' : 'Dump anything — a task, an idea, a note…'}
           autoFocus
           enterKeyHint="done"
         />
@@ -71,10 +131,21 @@ export default function CaptureScreen() {
               </button>
             ))}
           </div>
+          <button
+            className={`micbtn ${recording ? 'recording' : ''}`}
+            onClick={() => void toggleMic()}
+            aria-label={recording ? 'Stop voice capture' : 'Start voice capture'}
+          >
+            {recording ? '⏹' : '🎙'}
+          </button>
         </div>
       </div>
 
-      <button className="dumpbtn" disabled={!text.trim()} onClick={() => void submit()}>
+      <button
+        className="dumpbtn"
+        disabled={!text.trim()}
+        onClick={() => void submit(voiceUsed.current ? 'voice' : 'text')}
+      >
         Dump it
       </button>
 
