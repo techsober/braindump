@@ -5,6 +5,7 @@ import TasksScreen from './screens/TasksScreen'
 import NotesScreen from './screens/NotesScreen'
 import InboxScreen from './screens/InboxScreen'
 import SettingsSheet from './components/SettingsSheet'
+import SearchOverlay from './components/SearchOverlay'
 
 type Tab = 'capture' | 'inbox' | 'tasks' | 'notes'
 
@@ -21,6 +22,7 @@ export default function App() {
   const inboxCount = useStore((s) => s.items.filter((i) => !i.triaged).length)
   const [tab, setTab] = useState<Tab>('capture')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
 
   useEffect(() => {
     void load()
@@ -33,6 +35,9 @@ export default function App() {
       <header className="topbar">
         <span className="brand">Brain Dump</span>
         <span className="spacer" />
+        <button className="iconbtn" aria-label="Search" onClick={() => setSearchOpen(true)}>
+          🔍
+        </button>
         <button className="iconbtn" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
           ⚙
         </button>
@@ -59,6 +64,7 @@ export default function App() {
         ))}
       </nav>
 
+      {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
       {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
     </div>
   )
